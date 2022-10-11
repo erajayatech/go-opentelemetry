@@ -14,7 +14,11 @@ import (
 // span must be completed with `defer span.End()` right after the call.
 func NewSpan(ctx context.Context, name string, operation string) (context.Context, trace.Span) {
 	if operation != "" {
-		return otel.Tracer(name).Start(ctx, operation)
+		return otel.Tracer(name).Start(
+			ctx,
+			operation,
+			trace.WithSpanKind(trace.SpanKindClient),
+		)
 	}
 	return otel.Tracer("").Start(ctx, name)
 }
