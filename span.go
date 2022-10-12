@@ -6,8 +6,11 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
+	. "go.opentelemetry.io/otel/semconv/v1.10.0"
 	"go.opentelemetry.io/otel/trace"
 )
+
+var httpFlavorKey = "1.0"
 
 // NewSpan returns a new span from the global tracer. Depending on the `cus`
 // argument, the span is either a plain one or a customised one. Each resulting
@@ -17,10 +20,25 @@ func NewSpan(ctx context.Context, name string, operation string) (context.Contex
 		return otel.Tracer(name).Start(
 			ctx,
 			operation,
-			trace.WithSpanKind(trace.SpanKindClient),
 		)
 	}
 	return otel.Tracer("").Start(ctx, name)
+}
+
+// NewHttpSpan returns a new span from the global tracer. It's can trace an HTTP client request.
+// Each resulting span must be completed with `defer span.End()` right after the call.
+func NewHttpSpan(ctx context.Context, name string, operation string, httpSpanAttribute HttpSpanAttribute) (context.Context, trace.Span) {
+	return otel.Tracer(name).Start(
+		ctx,
+		operation,
+		trace.WithSpanKind(trace.SpanKindClient),
+		trace.WithAttributes(
+			HTTPMethodKey.String(httpSpanAttribute.Method),
+			HTTPFlavorKey.String(httpFlavorKey),
+			HTTPURLKey.String(httpSpanAttribute.Url),
+			NetPeerIPKey.String(httpSpanAttribute.IP),
+		),
+	)
 }
 
 // SpanFromContext returns the current span from a context. If you wish to avoid
@@ -81,4 +99,12 @@ func FailSpan(span trace.Span, msg string) {
 // span customiser type must implement this interface.
 type SpanCustomiser interface {
 	customise() []trace.SpanOption
+}
+
+type HttpSpanAttribute struct {
+	Method     string
+	Version    string
+	Url        string
+	IP         string
+	StatusCode int
 }
