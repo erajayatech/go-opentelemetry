@@ -22,7 +22,6 @@ go get github.com/erajayatech/go-opentelemetry
 ```
 
 ## Setup Environment
-
 - Set the following environment variables:
 
 * `MODE=<your_application_mode>`
@@ -36,13 +35,14 @@ go get github.com/erajayatech/go-opentelemetry
 * `OTEL_SAMPLED=true`
   * Be careful about using this sampler in a production application with significant traffic: a new trace will be started and exported for every request. If you won't sampling for every request just set to `false`
 
+## How To Use
 - Import package on main.go
-```
+```go
 otel "github.com/erajayatech/go-opentelemetry"
 ```
 
 - Add below code to `main.go`
-```
+```go
 otelTracerService := otel.ConstructOtelTracer()
 otelTracerServiceErr := otelTracerService.SetTraceProviderNewRelic(ctx)
 if otelTracerServiceErr != nil {
@@ -51,64 +51,64 @@ if otelTracerServiceErr != nil {
 ```
 
 - Tracing `Controller`
-* Import package
-```
-otel "github.com/erajayatech/go-opentelemetry"
-```
-* Start Span Tracer
-```
-ctx, span := otel.Start(context)
-defer span.End()
-```
-* Use code below to add span's tags
-```
-otel.AddSpanTags(span, map[string]string{"traceId": singleton.Trace().ID, "RegisterRequest": string(requestMarshalled)})
-```
-* Use code below to add span error 
-```
-if err != nil {
-    otel.AddSpanError(span, err)
-    otel.FailSpan(span, "Request not valid")
-    httpresponse.BadRequest(context, "Request not valid")
-    return
-}
-```
+    * Import package
+    ```go
+    otel "github.com/erajayatech/go-opentelemetry"
+    ```
+    * Start Span Tracer
+    ```go
+    ctx, span := otel.Start(context)
+    defer span.End()
+    ```
+    * Use code below to add span's tags
+    ```go
+    otel.AddSpanTags(span, map[string]string{"traceId": singleton.Trace().ID, "RegisterRequest": string(requestMarshalled)})
+    ```
+    * Use code below to add span error 
+    ```go
+    if err != nil {
+        otel.AddSpanError(span, err)
+        otel.FailSpan(span, "Request not valid")
+        httpresponse.BadRequest(context, "Request not valid")
+        return
+    }
+    ```
 
 - Tracing `Service`
-* Import package
-```
-otel "github.com/erajayatech/go-opentelemetry"
-```
-* Add context argument to function that we want to trace, example :
-```
-func (service *RegisterService) Register(context context.Context, request RegisterRequest, platform string) *httpresponse.HTTPError {}
-```
-* Use code below for add span
-```
-ctx, span := otel.NewSpan(context, "authregister.service.Register", "")
-defer span.End()
-```
-* Use code below to add span error 
-```
-if registeredPlatforms.Id == 0 {
-    httpError.Code = http.StatusBadRequest
-    httpError.Message = "Platform not valid"
-    otel.AddSpanError(span, valErr)
-    otel.FailSpan(span, httpError.Message)
-    return &httpError
-}
-```
+    * Import package
+    ```go
+    otel "github.com/erajayatech/go-opentelemetry"
+    ```
+    * Add context argument to function that we want to trace, example :
+    ```go
+    func (service *RegisterService) Register(context context.Context, request RegisterRequest, platform string) *httpresponse.HTTPError {}
+    ```
+    * Use code below for add span
+    ```go
+    ctx, span := otel.NewSpan(context, "authregister.service.Register", "")
+    defer span.End()
+    ```
+    * Use code below to add span error 
+    ```go
+    if registeredPlatforms.Id == 0 {
+        httpError.Code = http.StatusBadRequest
+        httpError.Message = "Platform not valid"
+        otel.AddSpanError(span, valErr)
+        otel.FailSpan(span, httpError.Message)
+        return &httpError
+    }
+    ```
 
 - Tracing `Query`
   - Add code below on `database.go`
     * Import package
-    ```
+    ```go
     "gorm.io/gorm/logger"
     "gorm.io/plugin/opentelemetry/logging/logrus"
     "gorm.io/plugin/opentelemetry/tracing"
     ```
     * Set `gorm logger`
-    ```
+    ```go
     logger := logger.New(
         logrus.NewWriter(),
         logger.Config{
@@ -130,45 +130,45 @@ if registeredPlatforms.Id == 0 {
     ```
   - Add code below on `repository`
     * Import package
-    ```
+    ```go
     otel "github.com/erajayatech/go-opentelemetry"
     ```
     * Add context argument to function that we want to trace, example :
-    ```
+    ```go
     func (repo *RegisterRepository) getCustomerByEmail(context context.Context, customer *model.Customer, email string) {}
     ```
     * Use code below for add span
-    ```
+    ```go
     ctx, span := otel.NewSpan(context, "authregister.RegisterRepository.getCustomerByEmail", "")
 	defer span.End()
     ```
     * Use code below for trace a query
-    ```
+    ```go
     repo.db.WithContext(ctx).First(customer, "email = ?", strings.ToLower(email))
     ```
 
 - Tracing `External Service`
-* Import package
-```
-otel "github.com/erajayatech/go-opentelemetry"
-```
-* Add context argument to function that we want to trace, example :
-```
-func (capillary *Capillary) sendToStagingCustomer(context context.Context, url string, payload interface{}, stagingResponse *StagingCustomerResponse) (*StagingCustomerResponse, error) {}
-```
-* Use code below for add span
-```
-httpSpanAttribute := otel.HttpSpanAttribute{}
-httpSpanAttribute.Method = request.Method
-httpSpanAttribute.Url = request.RequestURI
-httpSpanAttribute.IP = request.Host
+    * Import package
+    ```go
+    otel "github.com/erajayatech/go-opentelemetry"
+    ```
+    * Add context argument to function that we want to trace, example :
+    ```go
+    func (capillary *Capillary) sendToStagingCustomer(context context.Context, url string, payload interface{}, stagingResponse *StagingCustomerResponse) (*StagingCustomerResponse, error) {}
+    ```
+    * Use code below for add span
+    ```go
+    httpSpanAttribute := otel.HttpSpanAttribute{}
+    httpSpanAttribute.Method = request.Method
+    httpSpanAttribute.Url = request.RequestURI
+    httpSpanAttribute.IP = request.Host
 
-_, span := otel.NewHttpSpan(context, "capillary.sendToStagingCustomer", url, httpSpanAttribute)
-defer span.End()
-```
-* Use code below for add event span
-```
-otel.AddSpanEvents(span, "capillary.sendToStagingCustomer", map[string]string{"traceId": capillary.traceID, "StagCust Endpoint": url, "StagCust Request": string(payloadByte), "StagCustResponse": compactedBuffer.String(), "http.status_code": response.Status})
-```
+    _, span := otel.NewHttpSpan(context, "capillary.sendToStagingCustomer", url, httpSpanAttribute)
+    defer span.End()
+    ```
+    * Use code below for add event span
+    ```go
+    otel.AddSpanEvents(span, "capillary.sendToStagingCustomer", map[string]string{"traceId": capillary.traceID, "StagCust Endpoint": url, "StagCust Request": string(payloadByte), "StagCustResponse": compactedBuffer.String(), "http.status_code": response.Status})
+    ```
 
 
