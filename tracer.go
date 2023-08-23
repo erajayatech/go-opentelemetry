@@ -2,10 +2,6 @@ package goopentelemetry
 
 import (
 	"context"
-	"fmt"
-	"runtime"
-	"strings"
-
 	"github.com/gin-gonic/gin"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
@@ -18,62 +14,43 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-type OtelTracer struct {
-	env     string
-	version string
-	service string
-	sampled bool
-}
-
-func ConstructOtelTracer() OtelTracer {
-	return OtelTracer{
-		env:     GetEnv("MODE"),
-		version: GetEnv("APP_VERSION"),
-		service: GetEnv("APP_NAME"),
-		sampled: StringToBool(GetEnv("OTEL_SAMPLED")),
-	}
-}
-
-// tracerProviderJaeger returns an OpenTelemetry TracerProvider configured to use
-// the Jaeger exporter that will send spans to the provided url. The returned
-// TracerProvider will also use a Resource configured with all the information
-// about the application.
-func tracerProviderJaeger(url string, service string, version string, env string, sampled bool) (*tracesdk.TracerProvider, error) {
-	// Create the Jaeger exporter
-	exporter, err := jaeger.New(jaeger.WithCollectorEndpoint(jaeger.WithEndpoint(url)))
-	if err != nil {
-		return nil, err
+type (
+	OtelTracer interface {
+		SetTraceProviderJaeger() error
+		SetTraceProviderNewRelic(ctx context.Context) error
 	}
 
-	var sampler = tracesdk.NeverSample()
-	if sampled {
-		sampler = tracesdk.AlwaysSample()
+	otelTracer struct {
+		env       string
+		version   string
+		service   string
+		sampled   bool
+		jaegerUrl string
+	}
+)
+
+func ConstructOtelTracer(options ...OtelTracerOptionFunc) OtelTracer {
+	otelTracerImplement := &otelTracer{
+		env:     EnvironmentMode(),
+		version: AppVersion(),
+		service: AppName(),
+		sampled: OtelSampled(),
 	}
 
-	traceProvider := tracesdk.NewTracerProvider(
-		tracesdk.WithSampler(sampler),
-		// Always be sure to batch in production.
-		tracesdk.WithBatcher(exporter),
-		// Record information about this application in a Resource.
-		tracesdk.WithResource(resource.NewWithAttributes(
-			semconv.SchemaURL,
-			semconv.ServiceNameKey.String(service),
-			semconv.ServiceVersionKey.String(version),
-			attribute.String("environment", env),
-		)),
-	)
+	// Run the options on it
+	for _, option := range options {
+		option(otelTracerImplement)
+	}
 
-	return traceProvider, nil
+	return otelTracerImplement
 }
 
-func (otelTracer *OtelTracer) SetTraceProviderJaeger() error {
-	env := otelTracer.env
-	version := otelTracer.version
-	sampled := otelTracer.sampled
-	service := GetEnv("APP_NAME")
-	jaegerUrl := GetEnv("OTEL_JAEGER_URL")
+func (ot *otelTracer) SetTraceProviderJaeger() error {
+	if ot.jaegerUrl == "" {
+		ot.jaegerUrl = OtelJaegerURL()
+	}
 
-	tp, err := tracerProviderJaeger(jaegerUrl, service, version, env, sampled)
+	tp, err := ot.tracerProviderJaeger()
 
 	if err != nil {
 		return err
@@ -84,13 +61,8 @@ func (otelTracer *OtelTracer) SetTraceProviderJaeger() error {
 	return nil
 }
 
-func (otelTracer *OtelTracer) SetTraceProviderNewRelic(context context.Context) error {
-	env := otelTracer.env
-	version := otelTracer.version
-	sampled := otelTracer.sampled
-	service := GetEnv("APP_NAME")
-
-	tracerProvider, err := tracerProviderNewRelic(context, service, version, env, sampled)
+func (ot *otelTracer) SetTraceProviderNewRelic(context context.Context) error {
+	tracerProvider, err := ot.tracerProviderNewRelic(context)
 	if err != nil {
 		return err
 	}
@@ -100,22 +72,19 @@ func (otelTracer *OtelTracer) SetTraceProviderNewRelic(context context.Context) 
 	return nil
 }
 
-// tracerProviderNewRelic returns an OpenTelemetry TracerProvider configured to use
-// the NewRelic exporter that will send spans to the provided url. The returned
+// tracerProviderJaeger returns an OpenTelemetry TracerProvider configured to use
+// the Jaeger exporter that will send spans to the provided url. The returned
 // TracerProvider will also use a Resource configured with all the information
 // about the application.
-func tracerProviderNewRelic(ctx context.Context, service string, version string, env string, sampled bool) (*tracesdk.TracerProvider, error) {
-	// Create the NewRelic exporter
-	exporter, err := otlptrace.New(
-		ctx,
-		otlptracegrpc.NewClient(),
-	)
+func (ot *otelTracer) tracerProviderJaeger() (*tracesdk.TracerProvider, error) {
+	// Create the Jaeger exporter
+	exporter, err := jaeger.New(jaeger.WithCollectorEndpoint(jaeger.WithEndpoint(ot.jaegerUrl)))
 	if err != nil {
 		return nil, err
 	}
 
 	var sampler = tracesdk.NeverSample()
-	if sampled {
+	if ot.sampled {
 		sampler = tracesdk.AlwaysSample()
 	}
 
@@ -126,9 +95,44 @@ func tracerProviderNewRelic(ctx context.Context, service string, version string,
 		// Record information about this application in a Resource.
 		tracesdk.WithResource(resource.NewWithAttributes(
 			semconv.SchemaURL,
-			semconv.ServiceNameKey.String(service),
-			semconv.ServiceVersionKey.String(version),
-			attribute.String("environment", env),
+			semconv.ServiceNameKey.String(ot.service),
+			semconv.ServiceVersionKey.String(ot.version),
+			attribute.String("environment", ot.env),
+		)),
+	)
+
+	return traceProvider, nil
+}
+
+// tracerProviderNewRelic returns an OpenTelemetry TracerProvider configured to use
+// the NewRelic exporter that will send spans to the provided url. The returned
+// TracerProvider will also use a Resource configured with all the information
+// about the application.
+func (ot *otelTracer) tracerProviderNewRelic(ctx context.Context) (*tracesdk.TracerProvider, error) {
+	// Create the NewRelic exporter
+	exporter, err := otlptrace.New(
+		ctx,
+		otlptracegrpc.NewClient(),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	var sampler = tracesdk.NeverSample()
+	if ot.sampled {
+		sampler = tracesdk.AlwaysSample()
+	}
+
+	traceProvider := tracesdk.NewTracerProvider(
+		tracesdk.WithSampler(sampler),
+		// Always be sure to batch in production.
+		tracesdk.WithBatcher(exporter),
+		// Record information about this application in a Resource.
+		tracesdk.WithResource(resource.NewWithAttributes(
+			semconv.SchemaURL,
+			semconv.ServiceNameKey.String(ot.service),
+			semconv.ServiceVersionKey.String(ot.version),
+			attribute.String("environment", ot.env),
 		)),
 	)
 
@@ -136,23 +140,19 @@ func tracerProviderNewRelic(ctx context.Context, service string, version string,
 }
 
 func Start(ctx *gin.Context) (context.Context, trace.Span) {
-	actionName := getActionName()
+	actionName := GetActionName()
 	request := ctx.Request
 	requestMethod := request.Method
 	urlPath := ctx.Request.URL.Path
-	env := GetEnv("MODE")
 
-	operation := fmt.Sprintf("[%s] %s %s", env, requestMethod, urlPath)
+	operation := WriteStringTemplate("[%s] %s %s", EnvironmentMode(), requestMethod, urlPath)
 
 	return NewSpan(ctx, actionName, operation)
 }
 
-func getActionName() string {
-	c, _, _, _ := runtime.Caller(1)
-	f := runtime.FuncForPC(c).Name()
-	fs := strings.SplitN(f, ".", 2)
-	replacer := strings.NewReplacer("(", "", ")", "", "*", "")
-	actionName := replacer.Replace(fs[1])
+func StartWorker(ctx context.Context) (context.Context, trace.Span) {
+	actionName := GetActionName()
+	operation := WriteStringTemplate("[%s] WORKER %s", EnvironmentMode(), GetFunctionName(2))
 
-	return actionName
+	return NewSpan(ctx, actionName, operation)
 }
