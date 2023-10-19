@@ -1,14 +1,27 @@
 package goopentelemetry
 
 import (
+	"context"
 	"fmt"
-	"github.com/joho/godotenv"
+	"github.com/agiledragon/gomonkey/v2"
 	"github.com/spf13/cast"
-	"log"
+	"go.opentelemetry.io/otel/trace"
 	"os"
 	"runtime"
 	"strings"
 )
+
+// TracerPatch for unit test monkey patch
+func TracerPatch() (ctx context.Context, reset func()) {
+	ctx = context.Background()
+	tracerPatch := gomonkey.ApplyFunc(NewSpan, func(ctx context.Context, name, operation string) (context.Context, trace.Span) {
+		return ctx, trace.SpanFromContext(ctx)
+	})
+
+	return ctx, func() {
+		tracerPatch.Reset()
+	}
+}
 
 func GetEnvOrDefault(key string, defaultValue interface{}) interface{} {
 	value := os.Getenv(key)
@@ -19,12 +32,6 @@ func GetEnvOrDefault(key string, defaultValue interface{}) interface{} {
 }
 
 func GetEnv(key string) string {
-	err := godotenv.Load()
-	if err != nil {
-		log.Println("Cannot load file .env: ", err)
-		panic(err)
-	}
-
 	value := GetEnvOrDefault(key, "").(string)
 	return value
 }

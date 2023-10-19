@@ -21,11 +21,13 @@ type (
 	}
 
 	otelTracer struct {
-		env       string
-		version   string
-		service   string
-		sampled   bool
-		jaegerUrl string
+		env              string
+		version          string
+		service          string
+		sampled          bool
+		jaegerUrl        string
+		exporterEndpoint *string
+		apiKey           *string
 	}
 )
 
@@ -110,10 +112,16 @@ func (ot *otelTracer) tracerProviderJaeger() (*tracesdk.TracerProvider, error) {
 // about the application.
 func (ot *otelTracer) tracerProviderNewRelic(ctx context.Context) (*tracesdk.TracerProvider, error) {
 	// Create the NewRelic exporter
-	exporter, err := otlptrace.New(
-		ctx,
-		otlptracegrpc.NewClient(),
-	)
+	var options []otlptracegrpc.Option
+
+	if ot.exporterEndpoint != nil && ot.apiKey != nil {
+		options = append(options, otlptracegrpc.WithEndpoint(*ot.exporterEndpoint))
+		options = append(options, otlptracegrpc.WithHeaders(map[string]string{
+			"api-key": *ot.apiKey,
+		}))
+	}
+
+	exporter, err := otlptrace.New(ctx, otlptracegrpc.NewClient(options...))
 	if err != nil {
 		return nil, err
 	}

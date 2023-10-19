@@ -3,9 +3,9 @@ module github.com/erajayatech/go-opentelemetry
 go 1.18
 
 require (
+	github.com/agiledragon/gomonkey/v2 v2.10.1
 	github.com/gin-gonic/gin v1.9.0
 	github.com/golang/mock v1.6.0
-	github.com/joho/godotenv v1.4.0
 	github.com/spf13/cast v1.5.1
 	go.opentelemetry.io/otel v1.10.0
 	go.opentelemetry.io/otel/exporters/jaeger v1.10.0
