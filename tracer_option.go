@@ -26,3 +26,15 @@ func IsSampledEnable(isEnabled bool) OtelTracerOptionFunc {
 		ot.sampled = isEnabled
 	}
 }
+
+func SetExporterEndpoint(endpoint string) OtelTracerOptionFunc {
+	return func(ot *otelTracer) {
+		ot.exporterEndpoint = &endpoint
+	}
+}
+
+func SetApiKey(key string) OtelTracerOptionFunc {
+	return func(ot *otelTracer) {
+		ot.apiKey = &key
+	}
+}
