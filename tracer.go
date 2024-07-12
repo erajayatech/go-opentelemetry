@@ -119,6 +119,7 @@ func (ot *otelTracer) tracerProviderNewRelic(ctx context.Context) (*tracesdk.Tra
 		options = append(options, otlptracegrpc.WithHeaders(map[string]string{
 			"api-key": *ot.apiKey,
 		}))
+		options = append(options, otlptracegrpc.WithCompressor("gzip"))
 	}
 
 	exporter, err := otlptrace.New(ctx, otlptracegrpc.NewClient(options...))
