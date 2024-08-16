@@ -2,6 +2,7 @@ package goopentelemetry
 
 import (
 	"context"
+
 	"github.com/gin-gonic/gin"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
@@ -12,6 +13,7 @@ import (
 	tracesdk "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.4.0"
 	"go.opentelemetry.io/otel/trace"
+	"google.golang.org/grpc"
 )
 
 type (
@@ -148,13 +150,21 @@ func (ot *otelTracer) tracerProviderNewRelic(ctx context.Context) (*tracesdk.Tra
 	return traceProvider, nil
 }
 
-func Start(ctx *gin.Context) (context.Context, trace.Span) {
+func Start(ctx context.Context) (context.Context, trace.Span) {
 	actionName := GetActionName()
-	request := ctx.Request
-	requestMethod := request.Method
-	urlPath := ctx.Request.URL.Path
+	operation := "unknown"
 
-	operation := WriteStringTemplate("[%s] %s %s", EnvironmentMode(), requestMethod, urlPath)
+	c, ok := ctx.(*gin.Context)
+	if ok {
+		requestMethod := c.Request.Method
+		urlPath := c.Request.URL.Path
+		operation = WriteStringTemplate("[%s] %s %s", EnvironmentMode(), requestMethod, urlPath)
+	}
+
+	method, ok := grpc.Method(ctx)
+	if ok {
+		operation = WriteStringTemplate("[%s] %s", EnvironmentMode(), method)
+	}
 
 	return NewSpan(ctx, actionName, operation)
 }
