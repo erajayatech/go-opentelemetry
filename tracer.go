@@ -2,6 +2,8 @@ package goopentelemetry
 
 import (
 	"context"
+	"runtime"
+
 	"github.com/gin-gonic/gin"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
@@ -12,6 +14,7 @@ import (
 	tracesdk "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.4.0"
 	"go.opentelemetry.io/otel/trace"
+	"google.golang.org/grpc"
 )
 
 type (
@@ -147,15 +150,22 @@ func (ot *otelTracer) tracerProviderNewRelic(ctx context.Context) (*tracesdk.Tra
 	return traceProvider, nil
 }
 
-func Start(ctx *gin.Context) (context.Context, trace.Span) {
-	actionName := GetActionName()
-	request := ctx.Request
-	requestMethod := request.Method
-	urlPath := ctx.Request.URL.Path
+func Start(ctx context.Context) (context.Context, trace.Span) {
+	c, ok := ctx.(*gin.Context)
+	if ok {
+		requestMethod := c.Request.Method
+		urlPath := c.FullPath()
+		operation := WriteStringTemplate("[%s] %s %s", EnvironmentMode(), requestMethod, urlPath)
+		return otel.Tracer("").Start(ctx, operation)
+	}
 
-	operation := WriteStringTemplate("[%s] %s %s", EnvironmentMode(), requestMethod, urlPath)
+	method, ok := grpc.Method(ctx)
+	if ok {
+		operation := WriteStringTemplate("[%s] %s", EnvironmentMode(), method)
+		return otel.Tracer("").Start(ctx, operation)
+	}
 
-	return NewSpan(ctx, actionName, operation)
+	return otel.Tracer("").Start(ctx, MyCaller(2))
 }
 
 func StartWorker(ctx context.Context) (context.Context, trace.Span) {
@@ -163,4 +173,14 @@ func StartWorker(ctx context.Context) (context.Context, trace.Span) {
 	operation := WriteStringTemplate("[%s] WORKER %s", EnvironmentMode(), GetFunctionName(2))
 
 	return NewSpan(ctx, actionName, operation)
+}
+
+func MyCaller(skip int) string {
+	pc, _, _, ok := runtime.Caller(skip)
+	details := runtime.FuncForPC(pc)
+
+	if ok && details != nil {
+		return details.Name()
+	}
+	return "failed to identify method caller"
 }
