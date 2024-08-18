@@ -10,6 +10,10 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
+func RecordSpan(ctx context.Context) (context.Context, trace.Span) {
+	return otel.Tracer("").Start(ctx, MyCaller(2))
+}
+
 var httpFlavorKey = "1.0"
 
 // NewSpan returns a new span from the global tracer. Depending on the `cus`
