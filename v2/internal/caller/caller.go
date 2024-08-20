@@ -2,7 +2,6 @@ package caller
 
 import (
 	"runtime"
-	"strings"
 )
 
 // OptFuncName represents options for the FuncName function.
@@ -34,11 +33,7 @@ func FuncName(options ...OptionFuncName) string {
 		return "?FuncForPC?"
 	}
 
-	funcNameWithModule := fn.Name()
-	funcNameWithModuleSplit := strings.Split(funcNameWithModule, "/")
-	funcName := funcNameWithModuleSplit[len(funcNameWithModuleSplit)-1]
-
-	return funcName
+	return fn.Name()
 }
 
 // WithSkip sets the number of stack frames to skip when identifying the caller.
