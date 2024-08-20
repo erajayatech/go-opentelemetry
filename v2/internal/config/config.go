@@ -57,7 +57,12 @@ func GetAppEnvironment() (string, error) {
 }
 
 func GetOtelOTLPNewrelicHost() (string, error) {
-	return GetString("OTEL_EXPORTER_OTLP_ENDPOINT")
+	v, err := GetString("OTEL_EXPORTER_OTLP_ENDPOINT")
+	if err != nil {
+		return "", err
+	}
+	v = strings.ReplaceAll(v, "https://", "")
+	return v, nil
 }
 
 func GetOtelOTLPNewrelicHeaderAPIKey() (string, error) {

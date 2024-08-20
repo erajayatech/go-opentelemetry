@@ -5,7 +5,7 @@ Go OpenTelemetry Helper.
 Why we need `v2`?
 
 1. Span trace front to back (context propagation).
-2. Upgrade go version to `v1.23` and otel version from `v1.10.0` to `v1.28.0`, see [why_need_upgrade_version](./why_need_upgrade_version.md).
+2. Upgrade go version to `v1.21.0` and otel version from `v1.10.0` to `v1.28.0`, see [why_need_upgrade_version](./why_need_upgrade_version.md).
 3. Better library API. See [better_api.md](./better_api.md)
 
 ## Feature
@@ -19,7 +19,7 @@ Why we need `v2`?
 ## Installation v2
 
 ```bash
-go get github.com/erajayatech/go-opentelemetry/v2@v2.0.0-alpha.4
+go get github.com/erajayatech/go-opentelemetry/v2@v2.0.0-alpha.7
 ```
 
 ```go
