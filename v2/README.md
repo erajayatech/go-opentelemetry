@@ -19,11 +19,56 @@ Why we need `v2`?
 ## Installation v2
 
 ```bash
-go get github.com/erajayatech/go-opentelemetry/v2@v2.0.0-alpha.8
+go get github.com/erajayatech/go-opentelemetry/v2@v2.0.0-alpha.9
 ```
 
 ```go
 import gootel "github.com/erajayatech/go-opentelemetry/v2"
+```
+
+## Checklist implement v2
+
+Here is checklist for you to check wheter you already implement this `v2` fully.
+
+1. Your import is using `v2`.
+
+```go
+import gootel "github.com/erajayatech/go-opentelemetry/v2"
+```
+
+2. You create new trace provider. See [example](./example/server/main.go).
+
+```go
+tp, err := gootel.NewTraceProvider(context.Background())
+```
+
+3. Your server ready to receive context propagation. See [example gin](./example/server/server_gin.go) and See [example grpc](./example/server/server_grpc.go).
+
+```go
+ginEngine := gin.Default()
+ginEngine.Use(otelgin.Middleware(""))
+```
+
+```go
+grpcServer := grpc.NewServer(grpc.StatsHandler(otelgrpc.NewServerHandler()))
+```
+
+4. You record the span.
+
+```go
+ctx, span := gootel.RecordSpan(ctx)
+defer span.End()
+```
+
+5. Your client sent context propagation. See [example http](./example/client/http.go) and [example grpc](./example/client/grpc.go).
+
+```go
+client := &http.Client{Transport: otelhttp.NewTransport(http.DefaultTransport)}
+req, err := http.NewRequestWithContext(ctx, http.MethodGet, "http://localhost:4000/foo", nil)
+```
+
+```go
+conn, err := grpc.NewClient("localhost:4001", grpc.WithStatsHandler(otelgrpc.NewClientHandler()), grpc.WithTransportCredentials(insecure.NewCredentials()))
 ```
 
 ## Usage
