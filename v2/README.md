@@ -19,7 +19,7 @@ Why we need `v2`?
 ## Installation v2
 
 ```bash
-go get github.com/erajayatech/go-opentelemetry/v2@v2.0.0-alpha.9
+go get github.com/erajayatech/go-opentelemetry/v2@v2.0.0-alpha.10
 ```
 
 ```go
@@ -30,16 +30,21 @@ import gootel "github.com/erajayatech/go-opentelemetry/v2"
 
 Here is checklist for you to check wheter you already implement this `v2` fully.
 
-1. Your import is using `v2`.
+1. Your import is using `v2` and ranme.
 
 ```go
 import gootel "github.com/erajayatech/go-opentelemetry/v2"
 ```
 
-2. You create new trace provider. See [example](./example/server/main.go).
+2. You create new trace provider and shutdown it properly. See [example](./example/server/main.go).
 
 ```go
 tp, err := gootel.NewTraceProvider(context.Background())
+fatalIfErr(err)
+defer func() {
+    err := tp.Shutdown(context.Background())
+    warnIfErr(err)
+}()
 ```
 
 3. Your server ready to receive context propagation. See [example gin](./example/server/server_gin.go) and See [example grpc](./example/server/server_grpc.go).

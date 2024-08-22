@@ -27,7 +27,7 @@ to
 then
 
 ```bash
-go get github.com/erajayatech/go-opentelemetry/v2@v2.0.0-alpha.9
+go get github.com/erajayatech/go-opentelemetry/v2@v2.0.0-alpha.10
 ```
 
 then
