@@ -48,7 +48,7 @@ defer func() {
 }()
 ```
 
-3. You create new trace provider and shutdown it properly. See [example](./example/server/main.go).
+3. You create new meter provider and shutdown it properly. See [example](./example/server/main.go).
 
 ```go
 mp, err := gootel.NewMeterProvider(context.Background())
