@@ -11,6 +11,7 @@ Why we need `v2`?
 ## Feature
 
 - [x] Opentelemetry Trace
+- [x] Opentelemetry Metric
 - [x] Opentelemetry Context Propagation
 
 ![context_propagation](./README_asset/context_propagation.png)
