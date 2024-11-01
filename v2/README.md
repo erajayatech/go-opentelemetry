@@ -30,7 +30,7 @@ import gootel "github.com/erajayatech/go-opentelemetry/v2"
 
 Here is checklist for you to check wheter you already implement this `v2` fully.
 
-1. Your import is using `v2` and ranme.
+1. Your import is using `v2` and rename gootel.
 
 ```go
 import gootel "github.com/erajayatech/go-opentelemetry/v2"
@@ -47,7 +47,18 @@ defer func() {
 }()
 ```
 
-3. Your server ready to receive context propagation. See [example gin](./example/server/server_gin.go) and See [example grpc](./example/server/server_grpc.go).
+3. You create new trace provider and shutdown it properly. See [example](./example/server/main.go).
+
+```go
+mp, err := gootel.NewMeterProvider(context.Background())
+fatalIfErr(err)
+defer func() {
+    err := mp.Shutdown(context.Background())
+    warnIfErr(err)
+}()
+```
+
+4. Your server ready to receive context propagation. See [example gin](./example/server/server_gin.go) and See [example grpc](./example/server/server_grpc.go).
 
 ```go
 ginEngine := gin.Default()
@@ -58,14 +69,14 @@ ginEngine.Use(otelgin.Middleware(""))
 grpcServer := grpc.NewServer(grpc.StatsHandler(otelgrpc.NewServerHandler()))
 ```
 
-4. You record the span.
+5. You record the span.
 
 ```go
 ctx, span := gootel.RecordSpan(ctx)
 defer span.End()
 ```
 
-5. Your client sent context propagation. See [example http](./example/client/http.go) and [example grpc](./example/client/grpc.go).
+6. Your client sent context propagation. See [example http](./example/client/http.go) and [example grpc](./example/client/grpc.go).
 
 ```go
 client := &http.Client{Transport: otelhttp.NewTransport(http.DefaultTransport)}

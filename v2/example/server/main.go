@@ -14,10 +14,19 @@ func main() {
 	err := godotenv.Load()
 	fatalIfErr(err)
 
+	// create new trace provider
 	tp, err := gootel.NewTraceProvider(context.Background())
 	fatalIfErr(err)
 	defer func() {
 		err := tp.Shutdown(context.Background())
+		warnIfErr(err)
+	}()
+
+	// create new meter provider
+	mp, err := gootel.NewMeterProvider(context.Background())
+	fatalIfErr(err)
+	defer func() {
+		err := mp.Shutdown(context.Background())
 		warnIfErr(err)
 	}()
 
