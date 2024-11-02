@@ -10,6 +10,7 @@ import (
 	"go.opentelemetry.io/otel/sdk/metric"
 )
 
+// source: https://github.com/newrelic/newrelic-opentelemetry-examples/blob/main/getting-started-guides/go/otel.go#L97
 // source: https://opentelemetry.io/docs/languages/go/instrumentation/#metrics
 // source; https://opentelemetry.io/docs/languages/go/exporters/#otlp-metrics-over-grpc
 

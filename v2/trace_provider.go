@@ -11,6 +11,7 @@ import (
 	"go.opentelemetry.io/otel/sdk/trace"
 )
 
+// source: https://github.com/newrelic/newrelic-opentelemetry-examples/blob/main/getting-started-guides/go/otel.go#L85
 // source: https://opentelemetry.io/docs/languages/go/instrumentation/#traces
 // source: https://opentelemetry.io/docs/languages/go/exporters/#otlp-traces-over-grpc
 
