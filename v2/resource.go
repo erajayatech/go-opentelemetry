@@ -2,6 +2,7 @@ package gootel
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/erajayatech/go-opentelemetry/v2/internal/config"
 	"go.opentelemetry.io/otel/sdk/resource"
@@ -33,6 +34,7 @@ func getResource() (*resource.Resource, error) {
 		semconv.ServiceNameKey.String(serviceName),
 		semconv.ServiceVersionKey.String(appVersion),
 		semconv.DeploymentEnvironmentKey.String(appEnv),
+		semconv.K8SPodNameKey.String(os.Getenv("HOSTNAME")), // k8 will set this unique for every pod.
 	)
 
 	return _resource, nil
