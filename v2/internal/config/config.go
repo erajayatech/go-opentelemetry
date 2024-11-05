@@ -73,3 +73,7 @@ func GetOtelOTLPNewrelicHeaderAPIKey() (string, error) {
 	v = strings.ReplaceAll(v, "api-key=", "")
 	return v, nil
 }
+
+func GetOtelSpanNameShort() (bool, error) {
+	return GetBool("OTEL_SPAN_NAME_SHORT")
+}
