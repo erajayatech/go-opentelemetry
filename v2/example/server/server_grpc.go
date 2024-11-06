@@ -9,7 +9,9 @@ import (
 )
 
 func runGRPCServer() {
-	grpcServer := grpc.NewServer(grpc.StatsHandler(otelgrpc.NewServerHandler()))
+	grpcServer := grpc.NewServer(
+		grpc.StatsHandler(otelgrpc.NewServerHandler()), // use otelgrpc to instrument grpc request
+	)
 	pbfoo.RegisterExampleServer(grpcServer, &GRPCExampleServer{})
 	lis, err := net.Listen("tcp", "localhost:4001")
 	fatalIfErr(err)

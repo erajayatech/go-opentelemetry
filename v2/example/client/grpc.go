@@ -15,7 +15,11 @@ func extapiGRPCFoo() {
 	ctx, span := gootel.RecordSpan(context.Background())
 	defer span.End()
 
-	conn, err := grpc.NewClient("localhost:4001", grpc.WithStatsHandler(otelgrpc.NewClientHandler()), grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.NewClient(
+		"localhost:4001",
+		grpc.WithStatsHandler(otelgrpc.NewClientHandler()), // use otelgrpc to instrument grpc request
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	)
 	fatalIfErr(err)
 	client := pbfoo.NewExampleClient(conn)
 	res, err := client.Foo(ctx, &pbfoo.ReqFoo{})

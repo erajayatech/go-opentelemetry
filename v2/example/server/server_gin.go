@@ -9,7 +9,9 @@ import (
 
 func runHTTPServerGin() {
 	ginEngine := gin.Default()
-	ginEngine.Use(otelgin.Middleware(""))
+	ginEngine.Use(
+		otelgin.Middleware(""), // use otelgin to instrument http request
+	)
 	ginEngine.GET("foo", controllerGinFoo)
 	httpServer := &http.Server{Addr: "localhost:4000", Handler: ginEngine}
 	err := httpServer.ListenAndServe()

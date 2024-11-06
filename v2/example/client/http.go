@@ -15,7 +15,9 @@ func extapiHTTPFoo() {
 	ctx, span := gootel.RecordSpan(context.Background())
 	defer span.End()
 
-	client := &http.Client{Transport: otelhttp.NewTransport(http.DefaultTransport)}
+	client := &http.Client{
+		Transport: otelhttp.NewTransport(http.DefaultTransport), // use otelhttp to instrument http request
+	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, "http://localhost:4000/foo", nil)
 	fatalIfErr(err)
 	res, err := client.Do(req)

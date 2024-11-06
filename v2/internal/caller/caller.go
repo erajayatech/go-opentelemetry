@@ -2,6 +2,9 @@ package caller
 
 import (
 	"runtime"
+	"strings"
+
+	"github.com/erajayatech/go-opentelemetry/v2/internal/config"
 )
 
 // OptFuncName represents options for the FuncName function.
@@ -31,6 +34,12 @@ func FuncName(options ...OptionFuncName) string {
 	fn := runtime.FuncForPC(pc)
 	if fn == nil {
 		return "?FuncForPC?"
+	}
+
+	isShort, _ := config.GetOtelSpanNameShort()
+	if isShort {
+		fnName := strings.Split(fn.Name(), "/")
+		return fnName[len(fnName)-1]
 	}
 
 	return fn.Name()
