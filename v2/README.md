@@ -20,7 +20,7 @@ Why we need `v2`?
 ## Installation v2
 
 ```bash
-go get github.com/erajayatech/go-opentelemetry/v2
+go get github.com/erajayatech/go-opentelemetry/v2@edge
 ```
 
 ```go
