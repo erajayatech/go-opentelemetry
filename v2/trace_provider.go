@@ -23,16 +23,7 @@ func NewTraceProvider(ctx context.Context) (*sdktrace.TracerProvider, error) {
 		return nil, fmt.Errorf("%s:: %w", msg, err)
 	}
 
-	opt, err := getNROption()
-	if err != nil {
-		return fail(err, "error get new relic option")
-	}
-
-	exporter, err := otlptracegrpc.New(ctx, opt...)
-	if err != nil {
-		return fail(err, "error create otel otlp trace grpc exporter")
-	}
-
+	// Create the resource with common attributes
 	serviceName, err := config.GetServiceName()
 	if err != nil {
 		return fail(err, "error get service name")
@@ -55,14 +46,58 @@ func NewTraceProvider(ctx context.Context) (*sdktrace.TracerProvider, error) {
 		attribute.String("environment", appEnv),
 	)
 
-	tp := sdktrace.NewTracerProvider(
+	// Setup trace exporters based on configuration
+	var exporters []sdktrace.SpanExporter
+
+	// Setup New Relic exporter if enabled
+	if config.IsNewRelicEnabled() {
+		opt, err := getNROption()
+		if err != nil {
+			return fail(err, "error get new relic option")
+		}
+
+		nrExporter, err := otlptracegrpc.New(ctx, opt...)
+		if err != nil {
+			return fail(err, "error create new relic otlp trace grpc exporter")
+		}
+
+		exporters = append(exporters, nrExporter)
+	}
+
+	// Setup Jaeger exporter if enabled
+	if config.IsJaegerEnabled() {
+		jaegerOpt, err := getJaegerOption()
+		if err != nil {
+			return fail(err, "error get jaeger option")
+		}
+
+		jaegerExporter, err := otlptracegrpc.New(ctx, jaegerOpt...)
+		if err != nil {
+			return fail(err, "error create jaeger otlp trace grpc exporter")
+		}
+
+		exporters = append(exporters, jaegerExporter)
+	}
+
+	// Ensure we have at least one exporter
+	if len(exporters) == 0 {
+		return fail(fmt.Errorf("no exporters configured"), "error setting up trace provider")
+	}
+
+	// Create a BatchSpanProcessor for each exporter
+	opts := []sdktrace.TracerProviderOption{
 		sdktrace.WithSampler(sdktrace.AlwaysSample()),
-		sdktrace.WithBatcher(exporter),
 		sdktrace.WithResource(_resource),
-	)
+	}
+
+	for _, exporter := range exporters {
+		opts = append(opts, sdktrace.WithBatcher(exporter))
+	}
+
+	// Create trace provider with all the options
+	tp := sdktrace.NewTracerProvider(opts...)
 
 	otel.SetTracerProvider(tp)
-
 	otel.SetTextMapPropagator(propagation.TraceContext{})
 
 	return tp, nil
@@ -87,6 +122,24 @@ func getNROption() ([]otlptracegrpc.Option, error) {
 		otlptracegrpc.WithEndpoint(otelNRHost),
 		otlptracegrpc.WithHeaders(map[string]string{"api-key": otelNRHeaderAPIKey}),
 		otlptracegrpc.WithCompressor("gzip"),
+	}
+
+	return opts, nil
+}
+
+func getJaegerOption() ([]otlptracegrpc.Option, error) {
+	fail := func(err error, msg string) ([]otlptracegrpc.Option, error) {
+		return nil, fmt.Errorf("%s:: %w", msg, err)
+	}
+
+	jaegerEndpoint, err := config.GetJaegerEndpoint()
+	if err != nil {
+		return fail(err, "error get jaeger endpoint")
+	}
+
+	opts := []otlptracegrpc.Option{
+		otlptracegrpc.WithEndpoint(jaegerEndpoint),
+		otlptracegrpc.WithInsecure(), // Jaeger typically doesn't require authentication
 	}
 
 	return opts, nil

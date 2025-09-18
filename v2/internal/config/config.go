@@ -73,3 +73,36 @@ func GetOtelOTLPNewrelicHeaderAPIKey() (string, error) {
 	v = strings.ReplaceAll(v, "api-key=", "")
 	return v, nil
 }
+
+// GetJaegerEndpoint returns the Jaeger endpoint URL
+func GetJaegerEndpoint() (string, error) {
+	return GetString("JAEGER_ENDPOINT")
+}
+
+// IsJaegerEnabled returns whether the Jaeger exporter is enabled
+func IsJaegerEnabled() bool {
+	v, err := GetString("ENABLE_JAEGER_EXPORTER")
+	if err != nil {
+		return false
+	}
+	enabled, err := strconv.ParseBool(v)
+	if err != nil {
+		return false
+	}
+	return enabled
+}
+
+// IsNewRelicEnabled returns whether the New Relic exporter is enabled
+func IsNewRelicEnabled() bool {
+	v, err := GetString("ENABLE_NEWRELIC_EXPORTER")
+	if err != nil {
+		// Default to true for backward compatibility
+		return true
+	}
+	enabled, err := strconv.ParseBool(v)
+	if err != nil {
+		// Default to true for backward compatibility
+		return true
+	}
+	return enabled
+}

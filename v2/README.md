@@ -86,6 +86,15 @@ In New Relic you will get.
 
 ![http-client-span](./README_asset/http_span.png)
 
+## Multiple Exporters Support
+
+In version 2, we support exporting traces to multiple destinations. Currently, we support:
+
+1. New Relic (default)
+2. Jaeger (optional)
+
+See [Jaeger Setup Guide](./README_asset/jaeger_setup.md) for instructions on how to configure and use Jaeger alongside New Relic.
+
 ## Migrate from v1
 
 See [Migrate from v1](./migrate_from_v1.md)
