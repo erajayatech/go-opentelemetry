@@ -106,3 +106,46 @@ func IsNewRelicEnabled() bool {
 	}
 	return enabled
 }
+
+// IsDatadogEnabled returns whether the Datadog exporter is enabled
+func IsDatadogEnabled() bool {
+	v, err := GetString("ENABLE_DATADOG_EXPORTER")
+	if err != nil {
+		return false
+	}
+	enabled, err := strconv.ParseBool(v)
+	if err != nil {
+		return false
+	}
+	return enabled
+}
+
+// GetDatadogEndpoint returns the Datadog endpoint URL
+func GetDatadogEndpoint() (string, error) {
+	v, err := GetString("DATADOG_ENDPOINT")
+	if err != nil {
+		// Default Datadog OTLP endpoint
+		return "otel-grpc.eraspace.com", nil
+	}
+	// Remove https:// prefix if present
+	v = strings.ReplaceAll(v, "https://", "")
+	return v, nil
+}
+
+// GetDatadogAPIKey returns the Datadog API key
+func GetDatadogAPIKey() (string, error) {
+	return GetString("DATADOG_API_KEY")
+}
+
+// GetDatadogProtocol returns the Datadog protocol (grpc or http)
+func GetDatadogProtocol() string {
+	v, err := GetString("DATADOG_PROTOCOL")
+	if err != nil {
+		// Default to gRPC
+		return "grpc"
+	}
+	if v == "http" {
+		return "http"
+	}
+	return "grpc"
+}
