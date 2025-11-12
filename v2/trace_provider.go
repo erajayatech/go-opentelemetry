@@ -8,6 +8,7 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
@@ -79,6 +80,16 @@ func NewTraceProvider(ctx context.Context) (*sdktrace.TracerProvider, error) {
 		exporters = append(exporters, jaegerExporter)
 	}
 
+	// Setup Datadog exporter if enabled
+	if config.IsDatadogEnabled() {
+		datadogExporter, err := createDatadogExporter(ctx)
+		if err != nil {
+			return fail(err, "error create datadog exporter")
+		}
+
+		exporters = append(exporters, datadogExporter)
+	}
+
 	// Ensure we have at least one exporter
 	if len(exporters) == 0 {
 		return fail(fmt.Errorf("no exporters configured"), "error setting up trace provider")
@@ -143,6 +154,43 @@ func getJaegerOption() ([]otlptracegrpc.Option, error) {
 	}
 
 	return opts, nil
+}
+
+func createDatadogExporter(ctx context.Context) (sdktrace.SpanExporter, error) {
+	fail := func(err error, msg string) (sdktrace.SpanExporter, error) {
+		return nil, fmt.Errorf("%s:: %w", msg, err)
+	}
+
+	datadogEndpoint, err := config.GetDatadogEndpoint()
+	if err != nil {
+		return fail(err, "error get datadog endpoint")
+	}
+
+	datadogAPIKey, err := config.GetDatadogAPIKey()
+	if err != nil {
+		return fail(err, "error get datadog api key")
+	}
+
+	protocol := config.GetDatadogProtocol()
+
+	if protocol == "http" {
+		// HTTP exporter - construct proper HTTP endpoint
+		httpEndpoint := datadogEndpoint
+		opts := []otlptracehttp.Option{
+			otlptracehttp.WithEndpoint(httpEndpoint),
+			otlptracehttp.WithHeaders(map[string]string{"DD-API-KEY": datadogAPIKey}),
+			otlptracehttp.WithCompression(otlptracehttp.GzipCompression),
+		}
+		return otlptracehttp.New(ctx, opts...)
+	} else {
+		// gRPC exporter (default)
+		opts := []otlptracegrpc.Option{
+			otlptracegrpc.WithEndpoint(datadogEndpoint),
+			otlptracegrpc.WithHeaders(map[string]string{"DD-API-KEY": datadogAPIKey}),
+			otlptracegrpc.WithCompressor("gzip"),
+		}
+		return otlptracegrpc.New(ctx, opts...)
+	}
 }
 
 // -----------------------------------------------------------

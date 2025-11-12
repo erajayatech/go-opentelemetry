@@ -92,8 +92,11 @@ In version 2, we support exporting traces to multiple destinations. Currently, w
 
 1. New Relic (default)
 2. Jaeger (optional)
+3. Datadog (optional)
 
 See [Jaeger Setup Guide](./README_asset/jaeger_setup.md) for instructions on how to configure and use Jaeger alongside New Relic.
+
+See [Datadog Setup Guide](./README_asset/datadog_setup.md) for instructions on how to configure and use Datadog exporter.
 
 ## Migrate from v1
 
