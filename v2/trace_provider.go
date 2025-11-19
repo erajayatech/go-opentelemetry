@@ -189,6 +189,7 @@ func createDatadogExporter(ctx context.Context) (sdktrace.SpanExporter, error) {
 			otlptracegrpc.WithEndpoint(datadogEndpoint),
 			otlptracegrpc.WithHeaders(map[string]string{"DD-API-KEY": datadogAPIKey}),
 			otlptracegrpc.WithCompressor("gzip"),
+			otlptracegrpc.WithInsecure(),
 		}
 		return otlptracegrpc.New(ctx, opts...)
 	}
