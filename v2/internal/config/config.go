@@ -127,8 +127,6 @@ func GetDatadogEndpoint() (string, error) {
 		// Default Datadog OTLP endpoint
 		return "otel-grpc.eraspace.com", nil
 	}
-	// Remove https:// prefix if present
-	v = strings.ReplaceAll(v, "https://", "")
 	return v, nil
 }
 
