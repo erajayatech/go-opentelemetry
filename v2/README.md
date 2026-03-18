@@ -401,17 +401,482 @@ All tracing helpers follow OpenTelemetry semantic conventions for consistent att
 5. Extract trace/span IDs for logging and debugging
 6. Maintain backward compatibility with existing `RecordSpan` function
 
-## Multiple Exporters Support
+## Trace Provider Exporters
 
-In version 2, we support exporting traces to multiple destinations. Currently, we support:
+Version 2 provides comprehensive support for exporting traces to multiple destinations following OpenTelemetry standards. Each exporter is implemented as a separate function for maximum flexibility and configurability.
 
-1. New Relic (default)
-2. Jaeger (optional)
-3. Datadog (optional)
+### Available Exporters
 
-See [Jaeger Setup Guide](./README_asset/jaeger_setup.md) for instructions on how to configure and use Jaeger alongside New Relic.
+1. **New Relic** - Production-ready observability platform
+2. **Datadog** - Cloud monitoring and security platform
+3. **Jaeger** - Distributed tracing system (local development)
+4. **OTLP** - Generic OpenTelemetry Protocol exporter (compatible with any OTLP receiver)
+5. **Stdout/Console** - Console output for debugging and development
+6. **Multiple Exporters** - Export to multiple destinations simultaneously
 
-See [Datadog Setup Guide](./README_asset/datadog_setup.md) for instructions on how to configure and use Datadog exporter.
+### Exporter Configuration
+
+All exporters use a common configuration structure:
+
+```go
+type ExporterConfig struct {
+    ServiceName    string
+    ServiceVersion string
+    Environment    string
+}
+```
+
+### New Relic Exporter
+
+Export traces to New Relic using OTLP gRPC protocol.
+
+**Basic Usage:**
+
+```go
+import (
+    "context"
+    gootel "github.com/erajayatech/go-opentelemetry/v2"
+)
+
+func main() {
+    ctx := context.Background()
+
+    config := gootel.ExporterConfig{
+        ServiceName:    "my-service",
+        ServiceVersion: "1.0.0",
+        Environment:    "production",
+    }
+
+    tp, err := gootel.NewTraceProviderWithNewRelic(
+        ctx,
+        config,
+        os.Getenv("NEW_RELIC_API_KEY"),
+        "otlp.nr-data.net:4317",
+    )
+    if err != nil {
+        log.Fatal(err)
+    }
+    defer tp.Shutdown(ctx)
+
+    otel.SetTracerProvider(tp)
+
+    ctx, span := gootel.RecordSpan(ctx)
+    defer span.End()
+
+    gootel.AddBusinessAttribute(span, "test", "value")
+}
+```
+
+**Environment Variables:**
+
+```bash
+export NEW_RELIC_API_KEY="your-new-relic-api-key"
+export NEW_RELIC_ENDPOINT="otlp.nr-data.net:4317"
+```
+
+**Features:**
+- OTLP gRPC protocol with gzip compression
+- Automatic resource attribute tagging
+- Compatible with New Relic APM
+- Production-ready with built-in retries
+
+### Datadog Exporter
+
+Export traces to Datadog using OTLP gRPC or HTTP protocol.
+
+**Basic Usage (gRPC):**
+
+```go
+import (
+    "context"
+    gootel "github.com/erajayatech/go-opentelemetry/v2"
+)
+
+func main() {
+    ctx := context.Background()
+
+    config := gootel.ExporterConfig{
+        ServiceName:    "my-service",
+        ServiceVersion: "1.0.0",
+        Environment:    "production",
+    }
+
+    tp, err := gootel.NewTraceProviderWithDatadog(
+        ctx,
+        config,
+        os.Getenv("DATADOG_API_KEY"),
+        "trace-agent.datadoghq.com:4317",
+        false,
+    )
+    if err != nil {
+        log.Fatal(err)
+    }
+    defer tp.Shutdown(ctx)
+
+    otel.SetTracerProvider(tp)
+
+    ctx, span := gootel.RecordSpan(ctx)
+    defer span.End()
+
+    gootel.AddBusinessAttribute(span, "test", "value")
+}
+```
+
+**Basic Usage (HTTP):**
+
+```go
+tp, err := gootel.NewTraceProviderWithDatadog(
+    ctx,
+    config,
+    os.Getenv("DATADOG_API_KEY"),
+    "trace-agent.datadoghq.com:4318",
+    true,
+)
+```
+
+**Environment Variables:**
+
+```bash
+export DATADOG_API_KEY="your-datadog-api-key"
+export DATADOG_ENDPOINT="trace-agent.datadoghq.com:4317"
+```
+
+**Features:**
+- Support for both gRPC and HTTP protocols
+- Automatic API key authentication
+- Compatible with Datadog APM
+- Gzip compression enabled by default
+
+### Jaeger Exporter
+
+Export traces to Jaeger using OTLP gRPC protocol. Ideal for local development and testing.
+
+**Basic Usage:**
+
+```go
+import (
+    "context"
+    gootel "github.com/erajayatech/go-opentelemetry/v2"
+)
+
+func main() {
+    ctx := context.Background()
+
+    config := gootel.ExporterConfig{
+        ServiceName:    "my-service",
+        ServiceVersion: "1.0.0",
+        Environment:    "development",
+    }
+
+    tp, err := gootel.NewTraceProviderWithJaeger(
+        ctx,
+        config,
+        "localhost:4317",
+    )
+    if err != nil {
+        log.Fatal(err)
+    }
+    defer tp.Shutdown(ctx)
+
+    otel.SetTracerProvider(tp)
+
+    ctx, span := gootel.RecordSpan(ctx)
+    defer span.End()
+
+    gootel.AddBusinessAttribute(span, "test", "value")
+}
+```
+
+**Running Jaeger locally with Docker:**
+
+```bash
+docker run -d --name jaeger \
+  -e COLLECTOR_OTLP_ENABLED=true \
+  -p 16686:16686 \
+  -p 4317:4317 \
+  -p 4318:4318 \
+  jaegertracing/all-in-one:latest
+```
+
+Access Jaeger UI at: http://localhost:16686
+
+**Features:**
+- Perfect for local development
+- Real-time trace visualization
+- No authentication required
+- Lightweight and easy to setup
+
+### OTLP Generic Exporter
+
+Export traces to any OTLP-compatible receiver using gRPC or HTTP protocol.
+
+**Basic Usage (gRPC):**
+
+```go
+import (
+    "context"
+    gootel "github.com/erajayatech/go-opentelemetry/v2"
+)
+
+func main() {
+    ctx := context.Background()
+
+    config := gootel.ExporterConfig{
+        ServiceName:    "my-service",
+        ServiceVersion: "1.0.0",
+        Environment:    "production",
+    }
+
+    headers := map[string]string{
+        "Authorization": "Bearer your-token",
+        "X-Custom-Header": "custom-value",
+    }
+
+    tp, err := gootel.NewTraceProviderWithOTLP(
+        ctx,
+        config,
+        "your-otlp-endpoint:4317",
+        false,
+        headers,
+    )
+    if err != nil {
+        log.Fatal(err)
+    }
+    defer tp.Shutdown(ctx)
+
+    otel.SetTracerProvider(tp)
+}
+```
+
+**Basic Usage (HTTP):**
+
+```go
+tp, err := gootel.NewTraceProviderWithOTLP(
+    ctx,
+    config,
+    "your-otlp-endpoint:4318",
+    true,
+    headers,
+)
+```
+
+**Features:**
+- Compatible with any OTLP receiver
+- Support for custom headers
+- Both gRPC and HTTP protocols
+- Gzip compression enabled
+
+### Stdout/Console Exporter
+
+Export traces to console for debugging and development purposes.
+
+**Basic Usage:**
+
+```go
+import (
+    gootel "github.com/erajayatech/go-opentelemetry/v2"
+)
+
+func main() {
+    config := gootel.ExporterConfig{
+        ServiceName:    "my-service",
+        ServiceVersion: "1.0.0",
+        Environment:    "development",
+    }
+
+    tp, err := gootel.NewTraceProviderWithStdout(config, true)
+    if err != nil {
+        log.Fatal(err)
+    }
+    defer tp.Shutdown(context.Background())
+
+    otel.SetTracerProvider(tp)
+
+    ctx, span := gootel.RecordSpan(context.Background())
+    defer span.End()
+
+    gootel.AddBusinessAttribute(span, "test", "value")
+}
+```
+
+**Features:**
+- Pretty-print option for readability
+- No external dependencies
+- Perfect for local development
+- Instant trace visibility
+
+### Multiple Exporters
+
+Export traces to multiple destinations simultaneously for comprehensive observability.
+
+**Basic Usage:**
+
+```go
+import (
+    "context"
+    gootel "github.com/erajayatech/go-opentelemetry/v2"
+    "go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
+    "go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
+)
+
+func main() {
+    ctx := context.Background()
+
+    config := gootel.ExporterConfig{
+        ServiceName:    "my-service",
+        ServiceVersion: "1.0.0",
+        Environment:    "production",
+    }
+
+    nrExporter, err := otlptracegrpc.New(ctx,
+        otlptracegrpc.WithEndpoint("otlp.nr-data.net:4317"),
+        otlptracegrpc.WithHeaders(map[string]string{"api-key": os.Getenv("NEW_RELIC_API_KEY")}),
+    )
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    jaegerExporter, err := otlptracegrpc.New(ctx,
+        otlptracegrpc.WithEndpoint("localhost:4317"),
+        otlptracegrpc.WithInsecure(),
+    )
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    exporters := []sdktrace.SpanExporter{nrExporter, jaegerExporter}
+
+    tp, err := gootel.NewTraceProviderWithMultipleExporters(ctx, config, exporters)
+    if err != nil {
+        log.Fatal(err)
+    }
+    defer tp.Shutdown(ctx)
+
+    otel.SetTracerProvider(tp)
+}
+```
+
+**Features:**
+- Export to multiple destinations simultaneously
+- Independent configuration per exporter
+- Graceful shutdown handling
+- Production-ready redundancy
+
+### Environment-Based Configuration
+
+For production deployments, use environment variables to configure exporters:
+
+```go
+func createTraceProvider(ctx context.Context) (*sdktrace.TracerProvider, error) {
+    config := gootel.ExporterConfig{
+        ServiceName:    os.Getenv("SERVICE_NAME"),
+        ServiceVersion: os.Getenv("SERVICE_VERSION"),
+        Environment:    os.Getenv("APP_ENV"),
+    }
+
+    exporter := os.Getenv("OTEL_EXPORTER")
+
+    switch exporter {
+    case "newrelic":
+        return gootel.NewTraceProviderWithNewRelic(
+            ctx,
+            config,
+            os.Getenv("NEW_RELIC_API_KEY"),
+            os.Getenv("NEW_RELIC_ENDPOINT"),
+        )
+    case "datadog":
+        return gootel.NewTraceProviderWithDatadog(
+            ctx,
+            config,
+            os.Getenv("DATADOG_API_KEY"),
+            os.Getenv("DATADOG_ENDPOINT"),
+            os.Getenv("DATADOG_USE_HTTP") == "true",
+        )
+    case "jaeger":
+        return gootel.NewTraceProviderWithJaeger(
+            ctx,
+            config,
+            os.Getenv("JAEGER_ENDPOINT"),
+        )
+    case "otlp":
+        return gootel.NewTraceProviderWithOTLP(
+            ctx,
+            config,
+            os.Getenv("OTLP_ENDPOINT"),
+            os.Getenv("OTLP_USE_HTTP") == "true",
+            parseHeaders(os.Getenv("OTLP_HEADERS")),
+        )
+    case "stdout":
+        return gootel.NewTraceProviderWithStdout(config, os.Getenv("OTEL_PRETTY_PRINT") == "true")
+    default:
+        return nil, fmt.Errorf("unsupported exporter: %s", exporter)
+    }
+}
+```
+
+**Environment Variables:**
+
+```bash
+# Common
+export SERVICE_NAME="my-service"
+export SERVICE_VERSION="1.0.0"
+export APP_ENV="production"
+
+# Exporter Selection
+export OTEL_EXPORTER="newrelic"
+
+# New Relic
+export NEW_RELIC_API_KEY="your-api-key"
+export NEW_RELIC_ENDPOINT="otlp.nr-data.net:4317"
+
+# Datadog
+export DATADOG_API_KEY="your-api-key"
+export DATADOG_ENDPOINT="trace-agent.datadoghq.com:4317"
+export DATADOG_USE_HTTP="false"
+
+# Jaeger
+export JAEGER_ENDPOINT="localhost:4317"
+
+# OTLP
+export OTLP_ENDPOINT="localhost:4317"
+export OTLP_USE_HTTP="false"
+export OTLP_HEADERS="Authorization:Bearer token,X-Custom:value"
+
+# Stdout
+export OTEL_PRETTY_PRINT="true"
+```
+
+### Best Practices
+
+1. **Use Stdout for Development**: Perfect for local development and debugging
+2. **Use Jaeger for Local Testing**: Quick setup for multi-service tracing
+3. **Use New Relic/Datadog for Production**: Comprehensive observability and alerting
+4. **Use Multiple Exporters for Critical Services**: Redundancy and comprehensive monitoring
+5. **Always Shutdown Trace Providers**: Proper resource cleanup
+6. **Use Environment Variables**: Flexible configuration across environments
+7. **Enable Gzip Compression**: Reduce network overhead for production
+
+### Migration from Legacy TraceProvider
+
+If you're using the legacy `NewTraceProvider` function, migration is straightforward:
+
+**Before:**
+```go
+tp, err := gootel.NewTraceProvider(ctx)
+```
+
+**After:**
+```go
+config := gootel.ExporterConfig{
+    ServiceName:    os.Getenv("SERVICE_NAME"),
+    ServiceVersion: os.Getenv("SERVICE_VERSION"),
+    Environment:    os.Getenv("APP_ENV"),
+}
+
+tp, err := gootel.NewTraceProviderWithNewRelic(ctx, config, apiKey, endpoint)
+```
+
+The new exporter providers offer more flexibility and explicit configuration options.
 
 ## Migrate from v1
 

@@ -124,8 +124,8 @@ func IsDatadogEnabled() bool {
 func GetDatadogEndpoint() (string, error) {
 	v, err := GetString("DATADOG_ENDPOINT")
 	if err != nil {
-		// Default Datadog OTLP endpoint
-		return "otel-grpc.eraspace.com", nil
+		// Default Datadog OTLP endpoint (gRPC)
+		return "trace-agent.datadoghq.com:4317", nil
 	}
 	return v, nil
 }
