@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
@@ -83,14 +84,14 @@ func NewTraceProviderWithDatadog(ctx context.Context, config ExporterConfig, api
 			otlptracehttp.WithEndpoint(endpoint),
 			otlptracehttp.WithHeaders(map[string]string{"DD-API-KEY": apiKey}),
 			otlptracehttp.WithCompression(otlptracehttp.GzipCompression),
-			otlptracehttp.WithInsecure(),
+			otlptracehttp.WithTimeout(15*time.Second),
 		)
 	} else {
 		exporter, err = otlptracegrpc.New(ctx,
 			otlptracegrpc.WithEndpoint(endpoint),
 			otlptracegrpc.WithHeaders(map[string]string{"DD-API-KEY": apiKey}),
 			otlptracegrpc.WithCompressor("gzip"),
-			otlptracegrpc.WithInsecure(),
+			otlptracegrpc.WithTimeout(15*time.Second),
 		)
 	}
 
