@@ -3,6 +3,8 @@ package gootel
 import (
 	"context"
 	"fmt"
+	"os"
+	"strings"
 
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
@@ -17,6 +19,23 @@ type ExporterConfig struct {
 	ServiceName    string
 	ServiceVersion string
 	Environment    string
+}
+
+// IsHTTPProtocol returns true if the protocol should be HTTP instead of gRPC
+// Supports both "http" and "http/protobuf" as valid values
+func IsHTTPProtocol(protocol string) bool {
+	protocol = strings.ToLower(protocol)
+	return protocol == "http" || protocol == "http/protobuf"
+}
+
+// GetOtelProtocol returns the OTLP protocol from environment variable
+// Supports both "http" and "http/protobuf" as valid values
+func GetOtelProtocol() string {
+	protocol := os.Getenv("OTEL_EXPORTER_OTLP_PROTOCOL")
+	if IsHTTPProtocol(protocol) {
+		return "http"
+	}
+	return "grpc"
 }
 
 // NewTraceProviderWithNewRelic creates a trace provider with New Relic exporter

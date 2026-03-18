@@ -147,3 +147,17 @@ func GetDatadogProtocol() string {
 	}
 	return "grpc"
 }
+
+// GetOtelProtocol returns the OTLP protocol (grpc or http/protobuf or http)
+func GetOtelProtocol() string {
+	v, err := GetString("OTEL_EXPORTER_OTLP_PROTOCOL")
+	if err != nil {
+		// Default to gRPC
+		return "grpc"
+	}
+	v = strings.ToLower(v)
+	if v == "http" || v == "http/protobuf" {
+		return "http"
+	}
+	return "grpc"
+}
